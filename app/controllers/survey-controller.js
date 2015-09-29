@@ -61,7 +61,7 @@ function webform( req, res, next ) {
         iframe: !!req.query.iframe,
         logout: req.logout
     };
-
+	_retrieveAndValidateCustomLogo(req, options);
     _renderWebform( req, res, next, options );
 }
 
@@ -71,7 +71,7 @@ function preview( req, res, next ) {
         iframe: !!req.query.iframe,
         logout: req.logout
     };
-
+	_retrieveAndValidateCustomLogo(req, options);
     _renderWebform( req, res, next, options );
 }
 
@@ -82,7 +82,7 @@ function edit( req, res, next ) {
             iframe: !!req.query.iframe,
             logout: req.logout
         };
-
+	_retrieveAndValidateCustomLogo(req, options);
     if ( req.query.instance_id ) {
         _renderWebform( req, res, next, options );
     } else {
@@ -125,4 +125,54 @@ function xform( req, res, next ) {
                 .send( survey.xform );
         } )
         .catch( next );
+}
+function _retrieveAndValidateCustomLogo(req, options) {
+
+    var hasErrors = false;
+    var customLogo, parentWindowOrigin, url, customLogoParts, originParts;
+
+    function setErrorMessage(key, value) {
+        if (options.submissionErrors === void(0)) {
+            options.submissionErrors = {};
+        }
+        if (options.submissionErrors[key] === void(0)) {
+            options.submissionErrors[key] = [];
+        }
+        options.submissionErrors[key].push(value);
+        hasErrors = true;
+    }
+
+    if (!req.query.customLogo) {
+        return;
+    } else {
+        customLogo = decodeURIComponent(req.query.customLogo);
+    }
+
+
+    // Security check, make sure not to let user run unexpected javascript in the context of our webpage.
+    if (!customLogo.match(/[\w:\/.-]+/)) {
+        setErrorMessage('customLogo', 'Must be of these characters: A..Z a..z 0..9 _:/.-');
+    }
+
+    // The query string parentWindowOrigin is required if you want to set custom logo, added security measures.
+    if (!req.query.parentWindowOrigin) {
+        setErrorMessage('parentWindowOrigin', 'Required by customLogo');
+    } else {
+        parentWindowOrigin = decodeURIComponent(req.query.parentWindowOrigin);
+        // Logo image must be from the same host.
+        url = require('url');
+        customLogoParts = url.parse(customLogo);
+        originParts = url.parse(parentWindowOrigin);
+
+        if (customLogoParts.hostname !== originParts.hostname) {
+            setErrorMessage(options, 'customLogo', 'Must be hosted in ' + originParts.hostname);
+        }
+    }
+
+    if (hasErrors) {
+        return;
+    }
+
+    delete customLogoParts.protocol;
+    options.customLogo = url.format(customLogoParts);
 }
