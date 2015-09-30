@@ -150,7 +150,7 @@ function _retrieveAndValidateCustomLogo(req, options) {
 
 
     // Security check, make sure not to let user run unexpected javascript in the context of our webpage.
-    if (!customLogo.match(/[\w:\/.-]+/)) {
+    if (!customLogo.match(/^[\w:\/.-]+$/)) {
         setErrorMessage('customLogo', 'Must be of these characters: A..Z a..z 0..9 _:/.-');
     }
 
